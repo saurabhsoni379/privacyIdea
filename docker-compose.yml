@@ -1,0 +1,72 @@
+services:
+  privacyidea:
+    build: ./privacyidea/.
+    container_name: privacyidea
+    volumes:
+      - ./privacyidea:/etc/privacyidea # Mounts the directory containing pi.cfg
+      - ./privacyidea_log:/var/log/privacyidea # Optional: Mount log directory
+    ports:
+      - '8090:5000'
+    depends_on:
+       - mariadb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: always
+  freeradius: 
+    build: ./freeradius/.
+    # image: msshahanshah/privacyidea-freeradius:04
+    container_name: freeradius
+    ports:
+      - '1812:1812/udp'
+      - '1813:1813/udp'
+    volumes:
+      - ./freeradius_log:/var/log/freeradius
+      - ./privacyidea/rlm_perl.ini:/etc/privacyidea/rlm_perl.ini
+    depends_on:
+      - privacyidea
+    command: ["freeradius", "-X"]
+
+  openldap:
+    image: bitnami/openldap:latest
+    container_name: openldap
+    ports:
+      - '1389:1389'
+      - '1636:1636'
+    environment:
+      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ADMIN_PASSWORD=adminpassword
+      - LDAP_USERS=user01,user02
+      - LDAP_PASSWORDS=password1,password2
+      - LDAP_BIND_DN=cn=admin,dc=example,dc=org
+      - LDAP_BASE=dc=example,dc=org
+      - HOSTNAME=openldap
+    volumes:
+      - 'openldap_data:/bitnami/openldap'   
+
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: pi_user
+      MYSQL_PASSWORD: pi_password
+      MYSQL_DATABASE: pi
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./maria_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s      
+      timeout: 5s
+      retries: 5
+      start_period: 10s  
+
+
+volumes:
+  openldap_data:
+    driver: local
