@@ -46,7 +46,7 @@ services:
       - HOSTNAME=openldap
     volumes:
       - 'openldap_data:/bitnami/openldap'   
-
+  
   mariadb:
     image: mariadb:latest
     container_name: mariadb
